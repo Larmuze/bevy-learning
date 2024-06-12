@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use rand::{random, Rng};
 
-use crate::player::{Player, PlayerMoveEvent};
+use crate::{bounding::{Intersects, Shape}, player::{Player, PlayerMoveEvent}};
 
 const BULLET_SPEED: f32 = 300.;
 const BULLET_LIFETIME: f32 = 2.;
@@ -53,15 +53,16 @@ pub fn spawn_bullets(
         0.
     );
 
+    let ellipse_primitive = Ellipse::new(3.0, 6.0);
     commands.spawn((ColorMesh2dBundle {
-        mesh: meshes.add(Ellipse::new(3.0, 6.0)).into(),
+        mesh: meshes.add(ellipse_primitive).into(),
         material: materials.add(color),
         transform: Transform::from_translation(player_transform.translation),
         ..default()
     }, Bullet {
         direction: direction.normalize(),
         spawn_time: time.elapsed_seconds()
-    }));
+    }, Shape::Ellipse(ellipse_primitive),  Intersects::default()));
 }
 
 pub fn move_bullets(

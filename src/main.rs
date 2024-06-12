@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bounding::BoundingPlugin;
 use bullet::BulletPlugin;
 use camera::CameraPlugin;
 use enemies::EnemyPlugin;
@@ -10,6 +11,7 @@ mod camera;
 mod level;
 mod bullet;
 mod enemies;
+mod bounding;
 
 fn main() {
     App::new()
@@ -19,5 +21,6 @@ fn main() {
         .add_plugins(LevelPlugin)
         .add_plugins(BulletPlugin)
         .add_plugins(EnemyPlugin)
+        .add_plugins(BoundingPlugin)
         .run();
 }

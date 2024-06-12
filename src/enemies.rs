@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use rand::Rng;
 
-use crate::player::{Player, PLAYER_SIZE};
+use crate::{bounding::{Intersects, Shape}, player::{Player, PLAYER_SIZE}};
 
 const SPAWN_DELAY: f32 = 1.;
 
@@ -53,14 +53,17 @@ fn spawn_enemy(
             break;
        }
     }
+
+    let triangle_primitive = Triangle2d::new(
+        Vec2::Y * 20.0,
+        Vec2::new(-20.0, -20.0),
+        Vec2::new(20.0, -20.0),
+    );
+
     commands.spawn((ColorMesh2dBundle {
-        mesh: meshes.add(Triangle2d::new(
-            Vec2::Y * 20.0,
-            Vec2::new(-20.0, -20.0),
-            Vec2::new(20.0, -20.0),
-        )).into(),
+        mesh: meshes.add(triangle_primitive).into(),
         material: materials.add(Color::RED),
         transform: Transform::from_translation(position),
         ..default()
-    }, Enemy, Health(1)));
+    }, Enemy, Health(1), Shape::Triangle(triangle_primitive),  Intersects::default()));
 }
