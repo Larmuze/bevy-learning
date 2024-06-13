@@ -40,12 +40,7 @@ pub fn spawn_bullets(
         return;
     };
 
-    let mut color = Color::BLACK;
-    color.set_r(random());
-    color.set_g(random());
-    color.set_b(random());
-
-
+    let mut color = Color::srgb(random(), random(), random());
     let mut rng = rand::thread_rng();
     let direction = move_event.0.clone() + Vec3::new(
         rng.gen_range(-0.4..0.4),

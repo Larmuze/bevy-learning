@@ -1,4 +1,4 @@
-use bevy::{math::bounding::*, prelude::*, transform::commands};
+use bevy::{math::bounding::*, prelude::*, color::palettes::basic::*};
 
 use crate::{bullet::Bullet, enemies::Enemy};
 
@@ -34,22 +34,22 @@ pub struct Intersects(bool);
 pub struct Volume(Aabb2d);
 
 fn render_shapes(mut gizmos: Gizmos, query: Query<(&Shape, &Transform)>) {
-    let color = Color::GRAY;
+    let color = Color::from(GRAY);
     for (shape, transform) in query.iter() {
         let translation = transform.translation.xy();
         let rotation = transform.rotation.to_euler(EulerRot::YXZ).2;
         match shape {
             Shape::Rectangle(r) => {
-                gizmos.primitive_2d(*r, translation, rotation, color);
+                gizmos.primitive_2d(r, translation, rotation, color);
             }
             Shape::Triangle(t) => {
-                gizmos.primitive_2d(*t, translation, rotation, color);
+                gizmos.primitive_2d(t, translation, rotation, color);
             }
             Shape::Line(l) => {
-                gizmos.primitive_2d(*l, translation, rotation, color);
+                gizmos.primitive_2d(l, translation, rotation, color);
             }
             Shape::Ellipse(e) => {
-                gizmos.primitive_2d(*e, translation, rotation, color);
+                gizmos.primitive_2d(e, translation, rotation, color);
             }
         }
     }
@@ -79,9 +79,9 @@ fn update_volumes(
 fn render_volumes(mut gizmos: Gizmos, query: Query<(&Volume, &Intersects)>) {
     for (volume, intersects) in query.iter() {
         let color = if **intersects {
-            Color::CYAN
+            Color::from(AQUA)
         } else {
-            Color::ORANGE_RED
+            Color::from(TEAL)
         };
         gizmos.rect_2d(volume.center(), 0., volume.half_size() * 2., color);
     }

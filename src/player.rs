@@ -1,5 +1,5 @@
 
-use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
+use bevy::{animation::{AnimationTarget, AnimationTargetId}, color::palettes::css::{PURPLE, YELLOW}, prelude::*, sprite::MaterialMesh2dBundle};
 
 pub const PLAYER_SIZE: f32 = 64.;
 const SPEED: f32 = 200.;
@@ -12,10 +12,8 @@ pub struct Player {
     is_jumping: bool
 }
 
-#[derive(Resource, Default)]
-pub struct PlayerAnimations {
-    jump: Option<Handle<AnimationClip>>
-}
+#[derive(Resource, Default, Deref, DerefMut)]
+pub struct PlayerAnimations(Vec<AnimationNodeIndex>);
 
 #[derive(Event, Default)]
 pub struct PlayerJumpStartEvent;
@@ -50,26 +48,27 @@ fn spawn_player(
     commands.spawn((MaterialMesh2dBundle {
         mesh: meshes.add(Rectangle::default()).into(),
         transform: Transform::default().with_scale(Vec3::splat(PLAYER_SIZE)),
-        material: materials.add(Color::PURPLE),
+        material: materials.add(Color::from(PURPLE)),
         ..default()
     }, Player::default(), AnimationPlayer::default(), player_jump));
 }
 
 fn generate_jump_animation(
+    mut commands: Commands,
     mut animations: ResMut<Assets<AnimationClip>>,
+    mut player_name_query: Query<(&Name, Entity), With<Player>>,
+    mut graphs: ResMut<Assets<AnimationGraph>>,
     mut player_animations: ResMut<PlayerAnimations>,
-    mut player_name_query: Query<&Name, With<Player>>,
 ) {
 
-    let Ok(player_name) = player_name_query.get_single_mut() else {
+    let Ok((player_name, player_entity)) = player_name_query.get_single_mut() else {
         return;
     };
     let mut animation = AnimationClip::default();
+    let jump_animation_target_id = AnimationTargetId::from_name(&player_name);
 
-    animation.add_curve_to_path(
-        EntityPath {
-            parts: vec![player_name.clone()]
-        },
+    animation.add_curve_to_target(
+        jump_animation_target_id,
         VariableCurve {
             keyframe_timestamps: vec![0.0, JUMP_SPEED / 2., JUMP_SPEED, JUMP_SPEED + JUMP_SPEED / 2., 2. * JUMP_SPEED],
             keyframes: Keyframes::Scale(vec![
@@ -83,7 +82,17 @@ fn generate_jump_animation(
         },
     );
 
-    player_animations.jump = Some(animations.add(animation))
+    let animation_handle = animations.add(animation);
+    let (graph, animation_index) = AnimationGraph::from_clip(animation_handle);    
+    commands.entity(player_entity).insert((
+        graphs.add(graph),
+        AnimationTarget {
+            id: jump_animation_target_id,
+            player: player_entity
+        }
+    ));
+    player_animations.0.push(animation_index);
+
 }
 
 fn move_player(
@@ -127,32 +136,28 @@ fn jump_player(
     mut player_query: Query<(&mut AnimationPlayer, &mut Player)>,
     player_animations: Res<PlayerAnimations>,
     mut player_jump_start_events: EventWriter<PlayerJumpStartEvent>,
-    mut player_jump_end_events: EventWriter<PlayerJumpEndEvent>,
+    mut player_jump_end_events: EventWriter<PlayerJumpEndEvent>
 ) {
     let Ok((mut player_animation_player, mut player)) = player_query.get_single_mut() else {
         return;
     };
 
-    let Some(jump_animation) = player_animations.jump.clone() else {
+    let Some(jump_animation) = player_animations.0.get(0) else {
         return;
     };
-    
-    if player_animation_player.is_finished() {
-        player.is_jumping = false;
-        if !player_animation_player.is_paused() {
-            player_jump_end_events.send_default();
-            player_animation_player.pause();
-        }
-    }
 
     if keyboard_input.just_pressed(KeyCode::Space) {
-        if player_animation_player.is_finished() {
-            player_animation_player.replay();
-            player_animation_player.resume();
+        if !player_animation_player.is_playing_animation(*jump_animation) {
+            player_jump_start_events.send_default();
+            player_animation_player.play(*jump_animation);
         }
-        player_animation_player.play(jump_animation);
         player.is_jumping = true;
-        player_jump_start_events.send_default();
+    }
+    if player_animation_player.animation(*jump_animation).is_some() 
+        && player_animation_player.all_finished() {
+            player_jump_end_events.send_default();
+            player_animation_player.stop_all();
+            player.is_jumping = false;
     }
 }
 
@@ -171,10 +176,10 @@ pub fn change_color(
     };
 
     for _ in player_jump_start_events.read() {
-        player_material.color = Color::YELLOW.into();
+        player_material.color = Color::from(YELLOW);
     }
 
     for _ in player_jump_end_events.read() {
-        player_material.color = Color::PURPLE;
+        player_material.color = Color::from(PURPLE);
     }
 }

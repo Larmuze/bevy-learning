@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{color::palettes::css::RED, prelude::*};
 use rand::Rng;
 
 use crate::{bounding::{Intersects, Shape}, player::{Player, PLAYER_SIZE}};
@@ -62,7 +62,7 @@ fn spawn_enemy(
 
     commands.spawn((ColorMesh2dBundle {
         mesh: meshes.add(triangle_primitive).into(),
-        material: materials.add(Color::RED),
+        material: materials.add(Color::from(RED)),
         transform: Transform::from_translation(position),
         ..default()
     }, Enemy, Health(1), Shape::Triangle(triangle_primitive),  Intersects::default()));
