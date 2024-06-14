@@ -1,20 +1,15 @@
 use bevy::{math::bounding::*, prelude::*, color::palettes::basic::*};
 
-use crate::{bullet::Bullet, enemies::Enemy};
-
 pub struct BoundingPlugin;
 
 impl Plugin for BoundingPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_systems(Update, update_volumes)
-            .add_systems(PostUpdate, (
-                //render_shapes,
-                (
-                    aabb_cast_system
-                )
-                //,render_volumes
-            ).chain())
+            // .add_systems(PostUpdate, (
+            //     //render_shapes,
+            //     //,render_volumes
+            // ).chain())
         ;
     }
 }
@@ -31,7 +26,7 @@ pub enum Shape {
 pub struct Intersects(bool);
 
 #[derive(Component, Deref, DerefMut)]
-pub struct Volume(Aabb2d);
+pub struct Volume(pub Aabb2d);
 
 fn render_shapes(mut gizmos: Gizmos, query: Query<(&Shape, &Transform)>) {
     let color = Color::from(GRAY);
@@ -84,26 +79,5 @@ fn render_volumes(mut gizmos: Gizmos, query: Query<(&Volume, &Intersects)>) {
             Color::from(TEAL)
         };
         gizmos.rect_2d(volume.center(), 0., volume.half_size() * 2., color);
-    }
-}
-
-fn aabb_cast_system(
-    mut commands: Commands,
-    bullets_query: Query<(Entity, &Volume), With<Bullet>>,
-    enemies_query: Query<(Entity, &Volume), With<Enemy>>,
-) {
-    for (bullet_entity, bullet_volume) in &bullets_query {
-        let mut has_despawned = false;
-        for (enemy_entity, enemy_volume) in &enemies_query {
-            if enemy_volume.intersects(&bullet_volume.0) {
-                commands.entity(enemy_entity).despawn();
-                has_despawned = true;
-                break;
-            }
-        }
-        if has_despawned {
-            commands.entity(bullet_entity).despawn();
-            break;
-        }
     }
 }

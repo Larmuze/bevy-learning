@@ -1,6 +1,8 @@
 
 use bevy::{animation::{AnimationTarget, AnimationTargetId}, color::palettes::css::{PURPLE, YELLOW}, prelude::*, sprite::MaterialMesh2dBundle};
 
+use crate::{bounding::Shape, enemies::Health};
+
 pub const PLAYER_SIZE: f32 = 64.;
 const SPEED: f32 = 200.;
 const JUMP_SPEED: f32 = 0.5;
@@ -33,7 +35,7 @@ impl Plugin for PlayerPlugin {
         .add_event::<PlayerMoveEvent>()
         .add_systems(Startup, (spawn_player, generate_jump_animation).chain())
         .add_systems(Startup, generate_jump_animation)
-        .add_systems(Update, (move_player, jump_player, change_color))
+        .add_systems(Update, (move_player, jump_player, change_color, player_death))
         ;
     }
 }
@@ -45,12 +47,19 @@ fn spawn_player(
 ) {
     let player_jump = Name::new("player_jump");
 
-    commands.spawn((MaterialMesh2dBundle {
-        mesh: meshes.add(Rectangle::default()).into(),
-        transform: Transform::default().with_scale(Vec3::splat(PLAYER_SIZE)),
-        material: materials.add(Color::from(PURPLE)),
-        ..default()
-    }, Player::default(), AnimationPlayer::default(), player_jump));
+    commands.spawn((
+        MaterialMesh2dBundle {
+            mesh: meshes.add(Rectangle::default()).into(),
+            transform: Transform::default().with_scale(Vec3::splat(PLAYER_SIZE)),
+            material: materials.add(Color::from(PURPLE)),
+            ..default() 
+        },
+        Player::default(),
+        AnimationPlayer::default(),
+        player_jump,
+        Shape::Rectangle(Rectangle::from_length(PLAYER_SIZE)),
+        Health(3),
+    ));
 }
 
 fn generate_jump_animation(
@@ -181,5 +190,18 @@ pub fn change_color(
 
     for _ in player_jump_end_events.read() {
         player_material.color = Color::from(PURPLE);
+    }
+}
+
+pub fn player_death(
+    mut exit: EventWriter<AppExit>,
+    mut player_query: Query<(Entity, &Health), With<Player>>,
+) {
+    let Ok((mut player_entity, player_health)) = player_query.get_single_mut() else {
+        return;
+    };
+
+    if player_health.0 <= 0 {
+        exit.send(AppExit::Success);
     }
 }

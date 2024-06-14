@@ -67,8 +67,6 @@ pub fn move_bullets(
     for (mut transform, bullet) in &mut bullet_query {
         transform.translation += bullet.direction * time.delta_seconds() * BULLET_SPEED;
     }
-
-    // println!("Bullet counter : {:?}", bullet_query.iter().len())
 }
 
 pub fn despawn_bullet(
