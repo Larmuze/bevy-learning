@@ -1,11 +1,13 @@
 use bevy::{math::bounding::*, prelude::*, color::palettes::basic::*};
 
+use crate::{enemies::Death, AppState};
+
 pub struct BoundingPlugin;
 
 impl Plugin for BoundingPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_systems(Update, update_volumes)
+            .add_systems(PreUpdate, update_volumes.run_if(in_state(AppState::InGame)))
             // .add_systems(PostUpdate, (
             //     //render_shapes,
             //     //,render_volumes
@@ -54,7 +56,7 @@ fn update_volumes(
     mut commands: Commands,
     query: Query<
         (Entity, &Shape, &Transform),
-        Or<(Changed<Shape>, Changed<Transform>)>,
+        (Or<(Changed<Shape>, Changed<Transform>)>, Without<Death>),
     >,
 ) {
     for (entity, shape, transform) in query.iter() {

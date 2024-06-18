@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use rand::{random, Rng};
 
-use crate::{bounding::{Intersects, Shape}, player::{Player, PlayerMoveEvent}};
+use crate::{bounding::{Intersects, Shape}, player::{Player, PlayerMoveEvent}, AppState};
 
 const BULLET_SPEED: f32 = 300.;
 const BULLET_LIFETIME: f32 = 2.;
@@ -11,9 +11,8 @@ pub struct BulletPlugin;
 impl Plugin for BulletPlugin {
     fn build(&self, app: &mut App) {
         app
-        .add_systems(Update, spawn_bullets)
-        .add_systems(Update, move_bullets)
-        .add_systems(PostUpdate, despawn_bullet)
+        .add_systems(Update, (spawn_bullets, move_bullets).run_if(in_state(AppState::InGame)))
+        .add_systems(PostUpdate, despawn_bullet.run_if(in_state(AppState::InGame)))
         ;
     }
 }

@@ -1,9 +1,10 @@
 
 use bevy::{animation::{AnimationTarget, AnimationTargetId}, color::palettes::css::{PURPLE, YELLOW}, prelude::*, sprite::MaterialMesh2dBundle};
 
-use crate::{bounding::Shape, enemies::Health};
+use crate::{bounding::Shape, enemies::Health, AppState};
 
 pub const PLAYER_SIZE: f32 = 64.;
+pub const PLAYER_LIFES: i8 = 3;
 const SPEED: f32 = 200.;
 const JUMP_SPEED: f32 = 0.5;
 
@@ -33,12 +34,16 @@ impl Plugin for PlayerPlugin {
         .add_event::<PlayerJumpStartEvent>()
         .add_event::<PlayerJumpEndEvent>()
         .add_event::<PlayerMoveEvent>()
+        .add_event::<PlayerHitEvent>()
         .add_systems(Startup, (spawn_player, generate_jump_animation).chain())
         .add_systems(Startup, generate_jump_animation)
-        .add_systems(Update, (move_player, jump_player, change_color, player_death))
+        .add_systems(Update, (move_player, jump_player, change_color, player_death).run_if(in_state(AppState::InGame)))
         ;
     }
 }
+
+#[derive(Event, Default)]
+pub struct PlayerHitEvent;
 
 fn spawn_player(
     mut commands: Commands,
@@ -58,7 +63,7 @@ fn spawn_player(
         AnimationPlayer::default(),
         player_jump,
         Shape::Rectangle(Rectangle::from_length(PLAYER_SIZE)),
-        Health(3),
+        Health(PLAYER_LIFES),
     ));
 }
 
@@ -194,14 +199,14 @@ pub fn change_color(
 }
 
 pub fn player_death(
-    mut exit: EventWriter<AppExit>,
-    mut player_query: Query<(Entity, &Health), With<Player>>,
+    mut next_state: ResMut<NextState<AppState>>,
+    mut player_query: Query<&Health, With<Player>>,
 ) {
-    let Ok((mut player_entity, player_health)) = player_query.get_single_mut() else {
+    let Ok(player_health) = player_query.get_single_mut() else {
         return;
     };
 
     if player_health.0 <= 0 {
-        exit.send(AppExit::Success);
+        next_state.set(AppState::EndGame)
     }
 }

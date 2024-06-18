@@ -1,7 +1,7 @@
 use bevy::{math::bounding::*, color::palettes::css::{BLUE, RED}, prelude::*};
 use rand::Rng;
 
-use crate::{bounding::{Intersects, Shape, Volume}, bullet::Bullet, player::{Player, PLAYER_SIZE}};
+use crate::{bounding::{Intersects, Shape, Volume}, bullet::Bullet, player::{Player, PlayerHitEvent, PLAYER_SIZE}, AppState};
 
 const SPAWN_DELAY: f32 = 1.;
 const DEATH_TIME: f32 = 0.5;
@@ -14,11 +14,18 @@ impl Plugin for EnemyPlugin {
         app.add_systems(Update, (
             spawn_enemy.run_if(time_passed(SPAWN_DELAY)),
             move_enemies,
-            ((enemy_bullet_collision, enemy_player_collision),
-            play_death, despawn_dead).chain()
-        ));
+            (
+                (enemy_bullet_collision, enemy_player_collision),
+                play_death,
+                despawn_dead
+            ).chain()
+        ).run_if(in_state(AppState::InGame)))
+        .add_event::<EnemyKilledEvent>();
     }
 }
+
+#[derive(Event, Default)]
+pub struct EnemyKilledEvent;
 
 fn time_passed(t: f32) -> impl FnMut(Local<f32>, Res<Time>) -> bool {
     move |mut timer: Local<f32>, time: Res<Time>| {
@@ -84,7 +91,7 @@ fn spawn_enemy(
         ..default()
     }, Enemy {
         death_material: materials.add(Color::from(RED)),
-    }, Health(1), Shape::Triangle(triangle_primitive),  Intersects::default()));
+    }, Health(1), Shape::Triangle(triangle_primitive), Intersects::default()));
 }
 
 pub fn play_death(
@@ -136,14 +143,21 @@ pub fn enemy_bullet_collision(
     mut commands: Commands,
     bullets_query: Query<(Entity, &Volume), With<Bullet>>,
     mut enemies_query: Query<(&mut Health, &Volume), (With<Enemy>, Without<Player>, Without<Death>)>,
+    mut player_killed_events: EventWriter<EnemyKilledEvent>
 ) {
     for (mut enemy_health, enemy_volume) in &mut enemies_query {
+        let mut has_intersected = false;
         for (bullet_entity, bullet_volume) in &bullets_query {
             if enemy_volume.intersects(&bullet_volume.0) {
                 enemy_health.hit(1);
                 commands.entity(bullet_entity).despawn();
+                has_intersected = true;
+                player_killed_events.send_default();
                 break;
             }
+        }
+        if has_intersected {
+            break;
         }
     }
 }
@@ -151,6 +165,7 @@ pub fn enemy_bullet_collision(
 pub fn enemy_player_collision(
     mut enemies_query: Query<(&mut Health, &Volume), (With<Enemy>, Without<Player>, Without<Death>)>,
     mut player_query: Query<(&mut Health, &Volume), With<Player>>,
+    mut player_hit_events: EventWriter<PlayerHitEvent>
 ) {
 
     let Ok((mut player_health, player_volume)) = player_query.get_single_mut() else {
@@ -161,6 +176,7 @@ pub fn enemy_player_collision(
         if player_volume.intersects(&enemy_volume.0) {
             player_health.hit(1);
             enemy_health.hit(1);
+            player_hit_events.send_default();
             break;
         }
     }
